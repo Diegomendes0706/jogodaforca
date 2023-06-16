@@ -6,8 +6,8 @@ from email.message import EmailMessage
 from classes import Pessoa
 import ssl
 
-enderecodeemail = 'diego.mendesgarcia@gmail.com'
-senhadeemail = 'oeexoajydwjbokkk'
+enderecodeemail = 'jogoprojeto40@gmail.com'
+senhadeemail = 'pqmkopgytmicxiea'
 smtpgmail = 'smtp.gmail.com'
 smtp_port = 465
 banco = sqlite3.connect('jogo_forca.db')
@@ -19,19 +19,21 @@ perguntas = 'Perguntas'
 
 def criartabela(tipo):
     if tipo == adm:
-        cursor.execute('CREATE TABLE Administrador(nome text, email text, login text, senha text)')
+        cursor.execute('CREATE TABLE Administrador(nome text, email text unique, login text unique, senha text)')
     elif tipo == jogador:
-        cursor.execute('CREATE TABLE Jogador (cpf text, nome text, email text, login text, senha text) ')
+        cursor.execute('CREATE TABLE Jogador (cpf text unique, nome text, email text unique, login text, senha text) ')
     elif tipo == perguntas:
         cursor.execute('CREATE TABLE Perguntas (pergunta text)')
 
 
 def adcionarjogador(pessoa):
     cursor.execute(
-        f'INSERT INTO Jogador VALUES("{pessoa.cpf}","{pessoa.nome}","{pessoa.email}","{pessoa.login}","{pessoa.senha}")')
+        f"INSERT INTO Jogador VALUES(\"{pessoa.cpf}\",\"{pessoa.nome}\",\"{pessoa.email}\",\"{pessoa.login}\",\"{pessoa.senha}\")")
     banco.commit()
     print('adcionado com sucesso')
 
+def adcionaradm(pessoa):
+    cursor.execute(f'INSERT INTO {adm} VALUES ()')
 
 def deletardobanco(tipo, cpf):
     try:
@@ -53,6 +55,7 @@ def gerarsenha(email):
     for c in range(5):
         texto += random.choice(letras)
     cursor.execute(f'UPDATE {jogador} SET senha="{texto}" WHERE email = "{email}"')
+    banco.commit()
     return texto
 
 
@@ -106,7 +109,10 @@ while True:
                     smtp.login(enderecodeemail, senhadeemail)
                     smtp.sendmail(enderecodeemail, destinatario, msg.as_string())
         elif o == 4:
-            pass
+            verbanco(adm)
+            login = str(input('login: '))
+            senha = str(input('senha: '))
+
         elif o == 5:
             print('saindo....')
             break
