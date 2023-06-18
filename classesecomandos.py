@@ -1,12 +1,13 @@
 import sqlite3
 import smtplib
 import random
+import os
 import string
 from email.message import EmailMessage
 from unidecode import unidecode
 import ssl
 import speech_recognition as sr
-import pyaudio
+
 # variaveis
 enderecodeemail = 'jogoprojeto40@gmail.com'
 senhadeemail = 'pqmkopgytmicxiea'
@@ -19,24 +20,23 @@ jogador = 'Jogador'
 perguntas = 'Perguntas'
 
 
+def limpartela():
+    os.system('cls')
+
+
 def ouvirmic():
     microfone = sr.Recognizer()
-    while True:
-        with sr.Microphone() as fonte:
-            microfone.adjust_for_ambient_noise(fonte)
-            print('Diga alguma coisa')
-            audio = microfone.listen(fonte)
-            try:
-                palavra = microfone.recognize_google(audio, language='pt_BR')
-                print(f'voce falou: {palavra}')
-                letra = palavra.replace('letra ', '')
-                letra = unidecode(letra)
-            except sr.UnknownValueError:
-                print('não entendi')
-                microfone = sr.Recognizer()
-                continue
-            return letra
-        break
+    with sr.Microphone() as fonte:
+        microfone.adjust_for_ambient_noise(fonte)
+        audio = microfone.listen(fonte)
+        try:
+            palavra = microfone.recognize_google(audio, language='pt_BR')
+            letra = palavra.replace('letra ', '')
+            letra = unidecode(letra)
+            print(f'você disse: {palavra}')
+        except sr.UnknownValueError:
+            print('não entendi')
+        return letra
 
 
 def gerarsenha(email):
@@ -83,6 +83,7 @@ def entrarcomoadmin(login, senha):
                   '4 – Listar Perguntas\n'
                   '5 – Voltar Menu Principal\n')
             opa = int(input('Digite sua opção: '))
+            limpartela()
             if opa == 1:
                 codigo = input('codigo: ')
                 dica = input('dica: ')
@@ -90,6 +91,7 @@ def entrarcomoadmin(login, senha):
                 qmax = input('quantidade maxima de tentativas: ')
                 pergunta = Perguntas(codigo, dica, palavra, qmax)
                 adicionarpergunta(pergunta)
+                limpartela()
             elif opa == 2:
                 verbanco(perguntas)
                 codigo = str(input('codigo: '))
@@ -97,11 +99,14 @@ def entrarcomoadmin(login, senha):
                 c = cursor.fetchone()
                 if c[0] == 0:
                     print('pergunta não encontrada')
+                    limpartela()
                 else:
                     alterarpergunta(codigo)
+                    limpartela()
             elif opa == 3:
                 codigo = str(input('codigo: '))
                 cursor.execute(f'delete from "{perguntas}" where codigo = "{codigo}"')
+                limpartela()
             elif opa == 4:
                 verbanco(perguntas)
             elif opa == 5:
@@ -152,7 +157,7 @@ def jogar():
               f'Palavra: {iconepalavra}\n'
               f'Tentativas: {sorteada[2]}\n'
               f'{sorteada[2] - contador}/ {sorteada[2]}\n'
-              f'Fale uma letra: ')
+              f'Fale uma letra: (aviso fale: LETRA + (LETRA DE VOCE QUER COLOCAR)')
         letra = ouvirmic()
         while len(letra) != 1:
             print('Fale apenas uma letra')
@@ -168,6 +173,7 @@ def jogar():
             iconepalavra = ''.join(lista)
         else:
             contador += 1
+        limpartela()
         if '_' not in iconepalavra:
             print('parabens você ganhou')
             break
