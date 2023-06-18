@@ -3,7 +3,8 @@ import smtplib
 import random
 import string
 from email.message import EmailMessage
-from classes import Pessoa
+from classesecomandos import Pessoa, Perguntas
+import classesecomandos as fazer
 import ssl
 
 enderecodeemail = 'jogoprojeto40@gmail.com'
@@ -16,24 +17,47 @@ adm = 'Administrador'
 jogador = 'Jogador'
 perguntas = 'Perguntas'
 
-
-def criartabela(tipo):
+'''def criartabela(tipo):
     if tipo == adm:
-        cursor.execute('CREATE TABLE Administrador(nome text, email text unique, login text unique, senha text)')
+        cursor.execute('CREATE TABLE Administrador(nome text, email text unique, login text, senha text)')
     elif tipo == jogador:
-        cursor.execute('CREATE TABLE Jogador (cpf text unique, nome text, email text unique, login text, senha text) ')
+        cursor.execute('CREATE TABLE Jogador (cpf text unique, nome text, email text, senha text) ')
     elif tipo == perguntas:
-        cursor.execute('CREATE TABLE Perguntas (pergunta text)')
+        cursor.execute('CREATE TABLE Perguntas (codigo text unique, dica text, palavra text , qmaxima integer )')
+    banco.commit()
 
 
-def adcionarjogador(pessoa):
+def alterarpergunta(codigo):
+    cursor.execute(f'UPDATE INTO {perguntas} palavra = 
+    banco.commit()
+
+
+def alterarpergunta(codigo):
+    cursor.execute(f'update {perguntas} set palavra = "{input("palavra: ")}" where codigo = "{codigo}"')
+    cursor.execute(f'update {perguntas} set dica = "{input("dica: ")}" where codigo = "{codigo}"')
     cursor.execute(
-        f"INSERT INTO Jogador VALUES(\"{pessoa.cpf}\",\"{pessoa.nome}\",\"{pessoa.email}\",\"{pessoa.login}\",\"{pessoa.senha}\")")
+        f'update {perguntas} set qmaxima = "{input("quantidade maxima de tentativas: ")}" where codigo = "{codigo}"')
+    banco.commit()
+
+
+def adicionarpergunta(pergunta):
+    cursor.execute(
+        f'INSERT INTO {perguntas} VALUES("{pergunta.codigo}", "{pergunta.dica}", "{pergunta.palavra}", {pergunta.qmaxima})')
     banco.commit()
     print('adcionado com sucesso')
 
-def adcionaradm(pessoa):
-    cursor.execute(f'INSERT INTO {adm} VALUES ()')
+
+def adicionarjogador(pessoa):
+    cursor.execute(
+        f"INSERT INTO Jogador VALUES(\"{pessoa.cpf}\",\"{pessoa.nome}\",\"{pessoa.email}\",\"{pessoa.login}\",\"{pessoa.senha}\")")
+    banco.commit()
+    print('jogador adicionado com sucesso')
+
+
+def adicionaradm(pessoa):
+    cursor.execute(f'INSERT INTO {adm} VALUES ("{pessoa.nome}"," {pessoa.email}","{pessoa.login}", "{pessoa.senha}")')
+    banco.commit()
+
 
 def deletardobanco(tipo, cpf):
     try:
@@ -56,11 +80,9 @@ def gerarsenha(email):
         texto += random.choice(letras)
     cursor.execute(f'UPDATE {jogador} SET senha="{texto}" WHERE email = "{email}"')
     banco.commit()
-    return texto
-
-
+    return texto'''
 while True:
-    verbanco(jogador)
+    fazer.verbanco(jogador)
     print(('-------------- Menu Principal --------------\n'
            '1 – Jogar\n'
            '2 – Cadastrar Novo Jogador\n'
@@ -70,49 +92,16 @@ while True:
     try:
         o = int(input('Digite sua opção: '))
         if o == 1:
-            cpf = str(input('CPF: '))
-            senha = str(input('Senha: '))
-            cursor.execute(f'SELECT COUNT(*) FROM {jogador} WHERE cpf = ? AND senha = ?', (cpf, senha))
-            c = cursor.fetchone()
-            if c[0] == 0:
-                print('login inválido ')
-            else:
-                cursor.execute(f'SELECT nome FROM {jogador} WHERE cpf = ? ', (cpf,))
-                nome = cursor.fetchone()
-                nome = nome[0]
-                print(f'--------- Menu Jogo da Forca – {nome} --------\n\n'
-                      f'     1 – Jogar\n'
-                      f'     2 – Atualizar Dados\n'
-                      f'     3 – Voltar Menu Principal')
-
+            fazer.iniciarjogo()
         elif o == 2:
             email = str(input('email: '))
-            j = Pessoa(input('nome: '), input('cpf: '), email, login=email, senha=input('senha: '))
-            adcionarjogador(j)
+            j = Pessoa(input('nome: '), input('cpf: '), email=email, senha=str(input('senha: ')))
+            fazer.adicionarjogador(j)
         elif o == 3:
-            email = str(input('email:'))
-            cursor.execute(f'SELECT nome FROM {jogador} WHERE email = ?', (email,))
-            nome = cursor.fetchone()
-            if nome is None:
-                print('O e-mail digitado não esteja cadastrado')
-            else:
-                print(nome[0])
-                destinatario = email
-                msg = EmailMessage()
-                msg['From'] = enderecodeemail
-                msg['To'] = email
-                msg['Subject'] = 'Recuperação Senha'
-                corpo = f'“Oi {nome[0]}, sua nova senha é {gerarsenha(email)}.'
-                msg.set_content(corpo)
-                context = ssl.create_default_context()
-                with smtplib.SMTP_SSL(smtpgmail, smtp_port, context=context) as smtp:
-                    smtp.login(enderecodeemail, senhadeemail)
-                    smtp.sendmail(enderecodeemail, destinatario, msg.as_string())
+            fazer.mandaremail(str(input('email:')))
         elif o == 4:
-            verbanco(adm)
-            login = str(input('login: '))
-            senha = str(input('senha: '))
-
+            fazer.verbanco(adm)
+            fazer.entrarcomoadmin(str(input('login:')), str(input('senha:')))
         elif o == 5:
             print('saindo....')
             break
