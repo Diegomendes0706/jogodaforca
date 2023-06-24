@@ -7,6 +7,8 @@ from email.message import EmailMessage
 from unidecode import unidecode
 import ssl
 import speech_recognition as sr
+import csv
+import pyttsx3
 
 # variaveis
 enderecodeemail = 'jogoprojeto40@gmail.com'
@@ -25,18 +27,19 @@ def limpartela():
 
 
 def ouvirmic():
-    microfone = sr.Recognizer()
-    with sr.Microphone() as fonte:
-        microfone.adjust_for_ambient_noise(fonte)
-        audio = microfone.listen(fonte)
-        try:
-            palavra = microfone.recognize_google(audio, language='pt_BR')
-            letra = palavra.replace('letra ', '')
-            letra = unidecode(letra)
-            print(f'você disse: {palavra}')
-        except sr.UnknownValueError:
-            print('não entendi')
-        return letra
+    while True:
+        microfone = sr.Recognizer()
+        with sr.Microphone() as fonte:
+            microfone.adjust_for_ambient_noise(fonte)
+            audio = microfone.listen(fonte)
+            try:
+                palavra = microfone.recognize_google(audio, language='pt_BR')
+                letra = palavra.replace('letra ', '')
+                letra = unidecode(letra)  # tirar acentos e caracteres especiais
+                return letra
+            except sr.UnknownValueError:
+                print('não entendi, repita')
+                continue
 
 
 def gerarsenha(email):
@@ -53,9 +56,9 @@ def mandaremail(email):
     cursor.execute(f'SELECT nome FROM {jogador} WHERE email = ?', (email,))
     nome = cursor.fetchone()
     if nome is None:
-        print('O e-mail digitado não esteja cadastrado')
+        limpartela()
+        print('O e-mail digitado não está cadastrado')
     else:
-        print(nome[0])
         destinatario = email
         msg = EmailMessage()
         msg['From'] = enderecodeemail
@@ -67,6 +70,21 @@ def mandaremail(email):
         with smtplib.SMTP_SSL(smtpgmail, smtp_port, context=context) as smtp:
             smtp.login(enderecodeemail, senhadeemail)
             smtp.sendmail(enderecodeemail, destinatario, msg.as_string())
+        limpartela()
+        print('senha alterada com sucesso')
+
+
+def importarparacsv():
+    colunas = []
+    cursor.execute(f'select * from "{perguntas}"')
+    for descricao in cursor.description:
+        colunas.append(descricao[0])  # pegar o tipo de coluna
+    dados = cursor.fetchall()  # pegou as perguntas
+    print(dados)
+    with open('dados.csv', 'w', newline='') as arq:
+        escritor = csv.writer(arq)
+        escritor.writerow(colunas)
+        escritor.writerows(dados)
 
 
 def entrarcomoadmin(login, senha):
@@ -75,6 +93,7 @@ def entrarcomoadmin(login, senha):
     if c[0] == 0:
         print('Administrador não encontrado')
     else:
+        limpartela()
         while True:
             print('-------------- Menu Administrador --------------\n'
                   '1 – Cadastrar Nova Pergunta\n'
@@ -91,7 +110,6 @@ def entrarcomoadmin(login, senha):
                 qmax = input('quantidade maxima de tentativas: ')
                 pergunta = Perguntas(codigo, dica, palavra, qmax)
                 adicionarpergunta(pergunta)
-                limpartela()
             elif opa == 2:
                 verbanco(perguntas)
                 codigo = str(input('codigo: '))
@@ -99,16 +117,25 @@ def entrarcomoadmin(login, senha):
                 c = cursor.fetchone()
                 if c[0] == 0:
                     print('pergunta não encontrada')
-                    limpartela()
                 else:
                     alterarpergunta(codigo)
-                    limpartela()
             elif opa == 3:
                 codigo = str(input('codigo: '))
                 cursor.execute(f'delete from "{perguntas}" where codigo = "{codigo}"')
                 limpartela()
             elif opa == 4:
-                verbanco(perguntas)
+                cursor.execute(f'SELECT * FROM {perguntas}')
+                if cursor.fetchall():  # verificar se há perguntas
+                    verbanco(perguntas)
+                    im = int(input('deseja importar para uma artivo CSV?\n'
+                                   '1- Sim\n'
+                                   '2 - Não\n'))
+                    if im == 1:
+                        importarparacsv()
+                        limpartela()
+                        print('importado com sucesso')
+                else:
+                    print('não há perguntas cadastradas')
             elif opa == 5:
                 break
             else:
@@ -119,7 +146,8 @@ def adicionarpergunta(pergunta):
     cursor.execute(f'INSERT INTO {perguntas} VALUES("{pergunta.codigo}", "{pergunta.dica}", "{pergunta.palavra}",'
                    f' {pergunta.qmaxima})')
     banco.commit()
-    print('adcionado com sucesso')
+    limpartela()
+    print('adicionado com sucesso')
 
 
 def excluirtabela(tipo):
@@ -148,6 +176,7 @@ def sortearpergunta():
 
 def jogar():
     sorteada = sortearpergunta()
+    escolhidas = []  # lista para conferir letras já escolhidas
     contador = 0
     palavra = str(sorteada[1])
     iconepalavra = '_' * len(sorteada[1])
@@ -157,23 +186,29 @@ def jogar():
               f'Palavra: {iconepalavra}\n'
               f'Tentativas: {sorteada[2]}\n'
               f'{sorteada[2] - contador}/ {sorteada[2]}\n'
-              f'Fale uma letra: (aviso fale: LETRA + (LETRA DE VOCE QUER COLOCAR)')
+              f'Fale uma letra: (AVISO FALE: LETRA + (LETRA DE VOCE QUER COLOCAR)')
         letra = ouvirmic()
         while len(letra) != 1:
             print('Fale apenas uma letra')
             letra = ouvirmic()
-        indices = []
+        while letra in escolhidas:
+            print('Essa letra já foi escolhida,fale outra por favor')
+            letra = ouvirmic()
+        escolhidas.append(letra)
+        indices = []  # conferir em que posições a letra está
         for i in range(len(palavra)):
             if palavra[i] == letra:
                 indices.append(i)
         if letra in palavra:
-            lista = list(iconepalavra)
+            lista = list(iconepalavra)  # faz uma lista com cada letra da palavra em cada posição
             for k in indices:
-                lista[k] = letra
-            iconepalavra = ''.join(lista)
+                lista[k] = letra  # garantir que as letra, mesmo que repetida, seja adicionada
+            iconepalavra = ''.join(
+                lista)  # a string mostrada no jogo vai ser a junção de letras dessa lista nova lista
         else:
             contador += 1
         limpartela()
+        print(f'Você escolheu a letra: {letra}')
         if '_' not in iconepalavra:
             print('parabens você ganhou')
             break
@@ -197,32 +232,47 @@ def verificarjogador(nome, cpf, email, senha):
         return Pessoa(nome, cpf, email, senha)
 
 
+def falar(mensagem):
+    engine = pyttsx3.init()
+    engine.say(mensagem)
+    engine.runAndWait()
+
+
 def iniciarjogo():
     cpf = str(input('CPF: '))
     senha = str(input('Senha: '))
     cursor.execute(f'SELECT COUNT(*) FROM {jogador} WHERE cpf = ? AND senha = ?', (cpf, senha))
     c = cursor.fetchone()
+    limpartela()
     if c[0] == 0:
         print('login inválido ')
     else:
         cursor.execute(f'SELECT nome FROM {jogador} WHERE cpf = ? ', (cpf,))
         nome = cursor.fetchone()
         nome = nome[0]
+        falar(f'Bem vindo {nome}')
         while True:
             try:
-                p = int(input(f'--------- Menu Jogo da Forca – {nome} --------\n\n'
+                p = int(input(f'--------- Menu Jogo da Forca – {nome.capitalize()} --------\n\n'
                               f'     1 – Jogar\n'
                               f'     2 – Atualizar Dados\n'
                               f'     3 – Voltar Menu Principal\n\n'
                               f'     Digite sua opção: '))
+                limpartela()
                 if p == 1:
-                    jogar()
+                    cursor.execute(f'SELECT * FROM {perguntas}')
+                    lp = cursor.fetchall()
+                    if lp:  # verificar se há perguntas
+                        jogar()
+                    else:
+                        print('não já perguntas cadastradas')
                 elif p == 2:
-                    cpf = str(input('cpf: '))
-                    nome = str(input('nome: '))
-                    email = str(input('email: '))
-                    senha = str(input('senha: '))
+                    cpf = str(input('cpf atual: '))
+                    nome = str(input('nome atual: '))
+                    email = str(input('email atual: '))
+                    senha = str(input('senha atual: '))
                     j = verificarjogador(nome, cpf, email, senha)
+                    limpartela()
                     if j != 'jogador invalido':
                         novonome = str(input('novo nome: '))
                         if novonome != ' ':
@@ -238,13 +288,19 @@ def iniciarjogo():
                         if novocpf != ' ':
                             mudarjogador(j, 'cpf', novocpf)
                             j.cpf = novocpf
+                        limpartela()
+                        print('Jogador mudado com sucesso\n\n')
                     else:
+                        limpartela()
                         print(j)
                 elif p == 3:
+                    limpartela()
                     break
                 else:
+                    limpartela()
                     print('opção invalida')
             except ValueError:
+                limpartela()
                 print('opção invalida')
 
 
@@ -252,12 +308,12 @@ def adicionarjogador(player):
     cursor.execute(
         f"INSERT INTO Jogador VALUES(\"{player.cpf}\",\"{player.nome}\",\"{player.email}\",\"{player.senha}\")")
     banco.commit()
+    limpartela()
     print('jogador adicionado com sucesso')
 
 
 def adicionaradm(pessoa):
-    cursor.execute(
-        f'INSERT INTO {adm} VALUES ("{pessoa.nome}"," {pessoa.email}",admin , admin")')
+    cursor.execute(f"INSERT INTO '{adm}' VALUES ('{pessoa.nome}','{pessoa.email}','admin','admin')")
     banco.commit()
 
 
