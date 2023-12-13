@@ -6,4 +6,3 @@ login de usuarios
 envio de e-mail
 
 
-nao é um bom projeto, apenas de aprendizado
